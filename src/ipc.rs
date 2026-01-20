@@ -580,15 +580,15 @@ impl<'de> Deserialize<'de> for IpcSharedMemory {
     where
         D: Deserializer<'de>,
     {
-        let index: usize = Deserialize::deserialize(deserializer)?;
-        if index == usize::MAX {
+        let index: u32 = Deserialize::deserialize(deserializer)?;
+        if index == u32::MAX {
             return Ok(IpcSharedMemory::empty());
         }
 
         let os_shared_memory = OS_IPC_SHARED_MEMORY_REGIONS_FOR_DESERIALIZATION.with(
             |os_ipc_shared_memory_regions_for_deserialization| {
                 let mut regions =  os_ipc_shared_memory_regions_for_deserialization.borrow_mut();
-                let Some(region) = regions.get_mut(index) else {
+                let Some(region) = regions.get_mut(index as usize) else {
                     return Err(format!("Cannot consume shared memory region at index {index}, there are only {} regions available", regions.len()));
                 };
 
@@ -614,13 +614,13 @@ impl Serialize for IpcSharedMemory {
                         os_ipc_shared_memory_regions_for_serialization.borrow_mut();
                     let index = os_ipc_shared_memory_regions_for_serialization.len();
                     os_ipc_shared_memory_regions_for_serialization.push(os_shared_memory.clone());
-                    index
+                    index as u32
                 },
             );
-            debug_assert!(index < usize::MAX);
+            debug_assert!(index < u32::MAX);
             index
         } else {
-            usize::MAX
+            u32::MAX
         }
         .serialize(serializer)
     }
@@ -999,7 +999,7 @@ where
         let mut os_ipc_channels_for_serialization = os_ipc_channels_for_serialization.borrow_mut();
         let index = os_ipc_channels_for_serialization.len();
         os_ipc_channels_for_serialization.push(OsIpcChannel::Sender(os_ipc_sender.clone()));
-        index
+        index as u32
     });
     index.serialize(serializer)
 }
@@ -1008,11 +1008,11 @@ fn deserialize_os_ipc_sender<'de, D>(deserializer: D) -> Result<OsIpcSender, D::
 where
     D: Deserializer<'de>,
 {
-    let index: usize = Deserialize::deserialize(deserializer)?;
+    let index: u32 = Deserialize::deserialize(deserializer)?;
     OS_IPC_CHANNELS_FOR_DESERIALIZATION.with(|os_ipc_channels_for_deserialization| {
         // FIXME(pcwalton): This could panic if the data was corrupt and the index was out of
         // bounds. We should return an `Err` result instead.
-        Ok(os_ipc_channels_for_deserialization.borrow_mut()[index].to_sender())
+        Ok(os_ipc_channels_for_deserialization.borrow_mut()[index as usize].to_sender())
     })
 }
 
@@ -1027,7 +1027,7 @@ where
         let mut os_ipc_channels_for_serialization = os_ipc_channels_for_serialization.borrow_mut();
         let index = os_ipc_channels_for_serialization.len();
         os_ipc_channels_for_serialization.push(OsIpcChannel::Receiver(os_receiver.consume()));
-        index
+        index as u32
     });
     index.serialize(serializer)
 }
@@ -1036,11 +1036,11 @@ fn deserialize_os_ipc_receiver<'de, D>(deserializer: D) -> Result<OsIpcReceiver,
 where
     D: Deserializer<'de>,
 {
-    let index: usize = Deserialize::deserialize(deserializer)?;
+    let index: u32 = Deserialize::deserialize(deserializer)?;
 
     OS_IPC_CHANNELS_FOR_DESERIALIZATION.with(|os_ipc_channels_for_deserialization| {
         // FIXME(pcwalton): This could panic if the data was corrupt and the index was out
         // of bounds. We should return an `Err` result instead.
-        Ok(os_ipc_channels_for_deserialization.borrow_mut()[index].to_receiver())
+        Ok(os_ipc_channels_for_deserialization.borrow_mut()[index as usize].to_receiver())
     })
 }
